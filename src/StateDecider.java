@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Queue;
 
@@ -23,6 +24,8 @@ public class StateDecider {
 	static boolean[] lineVisited;
 
 	static Pair[][] neighbors;
+
+	static int opponentCount;
 
 	public boolean isValid(int idx) {
 		if (grid[idx] != 0)
@@ -101,8 +104,14 @@ public class StateDecider {
 			visited = new boolean[CELLS]; // this was a huge bug, I was initializing the array before the loop so
 											// sometimes it doesn't find a way out to the edge
 			int nidx = neighbors[i].idx;
-			if (!visited[nidx] && (grid[nidx] == searchfor || grid[nidx] == 0))
-				allfree &= freeDfs(nidx, searchfor);
+			if (grid[nidx] == searchfor || grid[nidx] == 0) {
+				opponentCount = 0;
+				if (grid[nidx] == searchfor)
+					opponentCount++;
+				boolean componentFree = freeDfs(nidx, searchfor);
+				if (opponentCount > 0)
+					allfree &= componentFree;
+			}
 		}
 
 		return !allfree;
@@ -116,12 +125,109 @@ public class StateDecider {
 		boolean currentFree = false;
 		for (Pair p : neighbors) {
 			if (!visited[p.idx] && (grid[p.idx] == 0 || grid[p.idx] == searchfor)) {
+				if (grid[p.idx] == searchfor)
+					opponentCount++;
 				currentFree |= freeDfs(p.idx, searchfor);
 			}
 		}
 		return currentFree;
 	}
 
+	public int chainValueBFS(int move) {
+		visited = new boolean[CELLS];
+		visited[move] = true;
+		int color = grid[move];
+		Queue<Pair> q = new LinkedList<Pair>();
+		Pair top = new Pair(0, move);
+		q.add(top);
+
+		// int bestBranching = 0;
+		ArrayList<Pair>  tips = new ArrayList<>();
+		while (!q.isEmpty()) {
+			top = q.poll();
+			int idx = top.idx;
+			Pair[] neighbors = getNearestSix(idx);
+			// int branching = 0;
+			for (Pair p : neighbors) {
+				if (!visited[p.idx] && grid[p.idx] == color) {
+					visited[p.idx] = true;
+					Pair p1 = new Pair(top.dist + 1, p.idx);
+					q.add(p1);
+					tips.add(p1);
+				}
+			}
+		}
+		
+		double dist = dist(xs[move], ys[move], xs[top.idx], ys[top.idx]);
+		int chainValue = (int) (top.dist * 100 / (dist == 0 ? 1 : dist)); // top.dist is the maximum depth reachable
+		// System.out.println("knot value: " + knotValue);
+		return chainValue;
+	}
+
+	public int enclosementValue(int move) {
+		int searchfor;
+		if (turn)
+			searchfor = 2;
+		else
+			searchfor = 1;
+		Pair[] neighbors = getNearestSix(move);
+		int best = 0;
+		for (int i = 0; i < neighbors.length; i++) {
+			visited = new boolean[CELLS];
+			int nidx = neighbors[i].idx;
+			if (!visited[nidx] && (grid[nidx] == searchfor || grid[nidx] == 0))
+				best = Math.max(best, trappedBFS(nidx, searchfor));
+		}
+
+		return best;
+	}
+	
+
+	private int trappedBFS(int i, int searchfor) {
+		visited[i] = true;
+		Queue<Pair> q = new LinkedList<Pair>();
+		q.add(new Pair(0, i));
+		// int bestBranching = 0;
+		int count = 0;
+		while (!q.isEmpty() && q.peek().dist < 3) {
+			Pair top = q.poll();
+			int idx = top.idx;
+			Pair[] neighbors = getNearestSix(idx);
+			// int branching = 0;
+			for (Pair p : neighbors) {
+				if (!visited[p.idx]) {
+					visited[p.idx] = true;
+					if (grid[p.idx] != 0 && grid[p.idx] != searchfor) {
+						count++;
+					}
+					q.add(new Pair(top.dist + 1, p.idx));
+				}
+			}
+		}
+		return count;
+	}
+
+	public int countComponent(int move) { // BFS
+		boolean[] visited = new boolean[CELLS];
+		visited[move] = true;
+		int color = grid[move];
+		Queue<Integer> q = new LinkedList<Integer>();
+		q.add(move);
+		int c = 1;
+		while (!q.isEmpty()) {
+			int next = q.poll();
+			Pair[] neighbors = getNearestSix(next);
+			for (Pair pair : neighbors) {
+				if (!visited[pair.idx] && grid[pair.idx] == color) {
+					visited[pair.idx] = true;
+					q.add(pair.idx);
+					c++;
+				}
+			}
+		}
+		return c;
+	}	
+	
 	double dist(int x, int y, int x2, int y2) {
 		return Math.sqrt((x - x2) * (x - x2) + (y - y2) * (y - y2));
 	}
@@ -141,44 +247,5 @@ public class StateDecider {
 		}
 
 	}
-
-	public int enclosementValue(int move) {
-		int searchfor;
-		if (turn)
-			searchfor = 2;
-		else
-			searchfor = 1;
-		Pair[] neighbors = getNearestSix(move);
-		int best = 1000;
-		for (int i = 0; i < neighbors.length; i++) {
-			visited = new boolean[CELLS];
-			int nidx = neighbors[i].idx;
-			if (!visited[nidx] && (grid[nidx] == searchfor || grid[nidx] == 0))
-				best = Math.min(best, trappedBFS(nidx, searchfor, 10));
-		}
-
-		return best;
-	}
-
-	private int trappedBFS(int i, int searchfor, int depth) {
-		visited[i] = true;
-		Queue<Integer> q = new LinkedList<Integer>();
-		q.add(i);
-		int bestBranching = 0;
-		while (!q.isEmpty()) {
-			int idx = q.poll();
-			Pair[] neighbors = getNearestSix(idx);
-			int branching = 0;
-			for (Pair p : neighbors) {
-				if (!visited[p.idx] && (grid[p.idx] == 0 || grid[p.idx] == searchfor)) {
-					visited[p.idx] = true;
-					branching++;
-					q.add(p.idx);
-				}
-			}
-			if(branching > 0)
-				bestBranching = Math.max(branching, bestBranching);
-		}
-		return bestBranching;
-	}
+	
 }

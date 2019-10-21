@@ -5,8 +5,11 @@ import java.util.Random;
 
 public class Game extends StateDecider {
 
-	private static long[][] r;
+	public static long[][] r;
 	public static String[] stringRep;
+	public static long initialHash;
+	public static double startTime;
+	public static int inf = 1000;
 
 	public Game() {
 		xs = new int[CELLS];
@@ -19,6 +22,7 @@ public class Game extends StateDecider {
 		r = new long[CELLS][3];
 		stringRep = new String[CELLS];
 		initializeR();
+		initialHash = r[CELLS / 2][1];
 		// System.out.println(r[100][2]);
 	}
 
@@ -55,16 +59,22 @@ public class Game extends StateDecider {
 	}
 
 	public Play search(int idx, int color) {
-		State s = new State(grid, idx, color == 1, noFilled);
-		int inf = (int) 1e9;
+		State s = new State(grid, idx, color == 1, noFilled, initialHash);
+		// Search.originalDepth = 5;
 		// Play play = chooseRandom(s);
-//		Play play = Search.miniMax(s, 5, true, color);
+		// Play play = Search.miniMax(s, 5, true, color);
 		// Play play = Search.alphaBeta(s, 5, -inf, inf, true, color);
-		 Play play = Search.IDMO(s, 5, color);
-
 		// Play play = Search.alphaBetaNegaMax(s, 6, Integer.MIN_VALUE,
 		// Integer.MAX_VALUE, true, color);
-		System.out.println(toString(play.pos) + " " + play.value + " " + Search.winningstates + " " + Search.allstates);
+
+		// Play play = Search.idmo(s, 9, color); // Not stable as much as TT and it
+		// needs something to stop the search when time's up
+		// Play play = Search.alphaBetaTT(s, 6, -inf, inf, true, color);
+		Play play = Search.alphaBetaIDTT(s, 11, color);
+		System.out.println(
+				"Best Move: " + toString(play.pos) + " --- Score = " + play.value + " --- # of Winning States = "
+						+ Search.winningStates + " --- # of Searched States = " + Search.allStates);
+		System.out.println("------");
 		return play;
 	}
 
@@ -90,6 +100,9 @@ public class Game extends StateDecider {
 			win = "WHITE WINS!";
 			System.out.println(win);
 		}
+		double currentTime = System.currentTimeMillis();
+		int time = (int) ((currentTime - startTime) / 1000);
+		System.out.println("# of Total moves are = " + this.noFilled + " in " + time + " seconds");
 		Main.switchToWinning(win);
 
 	}

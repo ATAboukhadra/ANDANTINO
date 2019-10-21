@@ -4,24 +4,14 @@ import java.util.Arrays;
 public class IDMO {
 	static Play[] oldMoves;
 
-	public static Play idmo(State s, int maxDepth, int color) { // Iterative Deepening with Move ordering
-		int inf = (int) 1e9;
-		Play p = null;
-		int size = s.getSuccessors().size();
-		oldMoves = new Play[size];
-		for (int i = 1; i <= maxDepth; i++) {
-			p = alphaBetaForIDMO(s, i, i, -inf, inf, true, color);
-		}
-		return p;
-	}
 
-	public static Play alphaBetaForIDMO(State s, int maxDepth, int depth, int alpha, int beta, boolean Max, int color) {
-		Search.allstates++;
+	public static Play idmo(State s, int maxDepth, int depth, int alpha, int beta, boolean Max, int color) {
+		Search.allStates++;
 		boolean winning = s.isWinning();
 		if (winning || depth == 0) {
 			if (winning)
-				Search.winningstates++;
-			int value = Search.evaluate(s, winning, color);
+				Search.winningStates++;
+			int value = Search.evaluate(s, winning, color, depth);
 			return new Play(value, s.idx);
 		}
 
@@ -36,7 +26,7 @@ public class IDMO {
 			score = Integer.MIN_VALUE;
 			int i = 0;
 			for (State succ : successors) {
-				Play play = alphaBetaForIDMO(succ, maxDepth, depth - 1, alpha, beta, !Max, color);
+				Play play = idmo(succ, maxDepth, depth - 1, alpha, beta, !Max, color);
 
 				if (depth == maxDepth) { // root node
 					oldMoves[i] = new Play(play.value, succ.idx);
@@ -55,7 +45,7 @@ public class IDMO {
 		} else {
 			score = Integer.MAX_VALUE;
 			for (State succ : successors) {
-				Play play = alphaBetaForIDMO(succ, maxDepth, depth - 1, alpha, beta, !Max, color);
+				Play play = idmo(succ, maxDepth, depth - 1, alpha, beta, !Max, color);
 				if (play.value < score) {
 					score = play.value;
 					bestPlay = new Play(score, succ.idx);

@@ -1,18 +1,17 @@
 import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.Queue;
 
 public class State extends StateDecider {
 	private ArrayList<State> successors;
 
 	// last played attributes Eh el7aga elly etla3abet 3shan awsal hena
 	int idx;
-
-	public State(int[] grid, int idx, boolean turn, int noFilled) {
+	long hashCode;
+	public State(int[] grid, int idx, boolean turn, int noFilled, long hashCode) {
 		this.grid = grid;
 		this.idx = idx;
 		this.turn = turn;
 		this.noFilled = noFilled;
+		this.hashCode = hashCode;
 	}
 
 	public boolean isWinning() {
@@ -27,7 +26,7 @@ public class State extends StateDecider {
 		for (int i = 0; i < CELLS; i++) {
 			if (isValid(i)) {
 				int[] newGrid = play(grid, i, color);
-				State succ = new State(newGrid, i, color == 1, this.noFilled + 1);
+				State succ = new State(newGrid, i, color == 1, this.noFilled + 1, hashCode ^ Game.r[i][newGrid[i]]);
 				successors.add(succ);
 			}
 		}
@@ -42,7 +41,7 @@ public class State extends StateDecider {
 		for (int i = 0; i < CELLS; i++) {
 			if (isValid(i)) {
 				int[] newGrid = play(grid, i, color);
-				State succ = new State(newGrid, i, color == 1, this.noFilled + 1);
+				State succ = new State(newGrid, i, color == 1, this.noFilled + 1, hashCode ^ Game.r[i][newGrid[i]]);
 				successors.add(succ);
 			}
 		}
@@ -70,24 +69,11 @@ public class State extends StateDecider {
 			return 1;
 	}
 
-	public int countComponent(int move) { // BFS
-		boolean[] visited = new boolean[CELLS];
-		visited[move] = true;
-		int color = grid[move];
-		Queue<Integer> q = new LinkedList<Integer>();
-		q.add(move);
-		int c = 1;
-		while (!q.isEmpty()) {
-			int next = q.poll();
-			Pair[] neighbors = getNearestSix(next);
-			for (Pair pair : neighbors) {
-				if (!visited[pair.idx] && grid[pair.idx] == color) {
-					visited[pair.idx] = true;
-					q.add(pair.idx);
-					c++;
-				}
-			}
+	public long getHashCode() {
+		long zobrist = 0l;
+		for (int i = 0; i < grid.length; i++) {
+			zobrist ^= Game.r[i][grid[i]];
 		}
-		return c;
-	}	
+		return zobrist;
+	}
 }

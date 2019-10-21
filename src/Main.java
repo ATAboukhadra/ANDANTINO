@@ -29,7 +29,7 @@ public class Main extends JPanel {
 	public static boolean blackStarts;
 	public static boolean gameCreated;
 	public static boolean gameover;
-
+	
 	public Main() {
 		setPreferredSize(new Dimension(WIDTH, HEIGHT));
 		game = new Game();
@@ -48,7 +48,7 @@ public class Main extends JPanel {
 						if (game.isValid(idx)) {
 							draw(game.turn, idx);
 							game.handlePlay(idx, blackStarts ? 2 : 1);
-							// System.out.println("enclosment = " + game.enclosementValue(idx));
+//							System.out.println("enclosment = " + game.enclosementValue(idx));
 							if (!gameover) {
 								Play p = game.search(idx, blackStarts ? 1 : 2);
 								draw(game.turn, p.pos);
@@ -64,11 +64,13 @@ public class Main extends JPanel {
 
 	private void create() {
 		game.createNeighbors();
+		Game.startTime = System.currentTimeMillis();
 		// handle
 		if (!blackStarts) {
-			State s = new State(game.grid, Game.CELLS / 2, game.turn, game.noFilled);
+			State s = new State(game.grid, Game.CELLS / 2, game.turn, game.noFilled, Game.initialHash);
 			Play p = Game.chooseRandom(s);
 			game.grid[p.pos] = 2; // white
+			Game.initialHash ^= Game.r[p.pos][2];
 			game.noFilled++;
 			game.turn = true; // fee la5bata hena
 			draw(!game.turn, p.pos);
@@ -197,6 +199,7 @@ public class Main extends JPanel {
 	}
 
 	public static void main(String[] args) {
+
 		f = new JFrame();
 
 		// color are the other way around because it is the same logic but after

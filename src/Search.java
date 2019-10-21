@@ -1,18 +1,23 @@
+import java.util.HashMap;
+
 public class Search {
 
 	static final int BLACK = 1;
 	static final int WHITE = 2;
 
-	public static int winningstates = 0;
-	public static int allstates = 0;
+	public static int winningStates = 0;
+	public static int allStates = 0;
+
+	public static int inf = 1000;
+	public static int originalDepth = 0;
 
 	public static Play miniMax(State s, int depth, boolean Max, int color) {
-		allstates++;
+		allStates++;
 		boolean winning = s.isWinning();
 		if (winning || depth == 0) {
 			if (winning)
-				winningstates++;
-			int value = evaluate(s, winning, color);
+				winningStates++;
+			int value = evaluate(s, winning, color, depth);
 			return new Play(value, s.idx);
 		}
 		int score;
@@ -40,11 +45,11 @@ public class Search {
 	}
 
 	public static Play alphaBetaNegaMax(State s, int depth, int alpha, int beta, boolean Max, int color) {
-		allstates++;
+		allStates++;
 		boolean winning = s.isWinning();
 		if (winning || depth == 0) {
 			if (winning)
-				winningstates++;
+				winningStates++;
 			return new Play(evaluateNegaMax(s, winning), s.idx);
 		}
 		int score = Integer.MIN_VALUE;
@@ -67,12 +72,12 @@ public class Search {
 	}
 
 	public static Play alphaBeta(State s, int depth, int alpha, int beta, boolean Max, int color) {
-		allstates++;
+		allStates++;
 		boolean winning = s.isWinning();
 		if (winning || depth == 0) {
 			if (winning)
-				winningstates++;
-			int value = evaluate(s, winning, color);
+				winningStates++;
+			int value = evaluate(s, winning, color, depth);
 			return new Play(value, s.idx);
 		}
 		int score;
@@ -109,85 +114,79 @@ public class Search {
 		return bestPlay;
 	}
 
-	public static Play IDMO(State s, int maxDepth, int color) { // Iterative Deepening with Move ordering
-		return IDMO.idmo(s, maxDepth, color);
-	}
-
 	public static Play alphaBetaTT(State s, int depth, int alpha, int beta, boolean Max, int color) {
-		int olda = alpha;
-		TTEntry n = retrieve(s);
-		if (n.depth >= depth) {
-			if (n.typeOfValue == Type.EXACT) {
-				return new Play(n.value, n.bestMove);
-			} else if (n.typeOfValue == Type.LOWER) {
-				alpha = Math.max(alpha, n.value);
-			} else {
-				beta = Math.min(beta, n.value);
-			}
-			if (alpha >= beta)
-				return new Play(n.value, n.bestMove);
-		}
-
-		allstates++;
-		boolean winning = s.isWinning();
-		if (winning || depth == 0) {
-			if (winning)
-				winningstates++;
-			return new Play(evaluate(s, winning, color), s.idx);
-		}
-		int score = Integer.MIN_VALUE;
-		Play bestPlay = null;
-
-		for (State succ : s.getSuccessors()) {
-			Play play = alphaBetaTT(succ, depth - 1, -1 * beta, -1 * alpha, !Max, color);
-			int value = play.value * -1;
-			if (value > score) {
-				score = value;
-				bestPlay = new Play(score, succ.idx);
-			}
-			if (score > alpha)
-				alpha = score;
-			if (score >= beta)
-				break;
-		}
-		Type flag;
-		if (score <= olda)
-			flag = Type.UPPER;
-		else if (score >= beta)
-			flag = Type.LOWER;
-		else
-			flag = Type.EXACT;
-
-		store(s, bestPlay.pos, score, flag, depth);
-
-		return bestPlay;
+		TranspositionTable.TT = new HashMap<>();
+		TranspositionTable.errors = 0;
+		originalDepth = depth;
+		Play p = TranspositionTable.alphaBetaTT(s, depth, alpha, beta, Max, color);
+		System.out.println(TranspositionTable.errors);
+		return p;
 	}
 
-	static TTEntry retrieve(State s) {
-		return null;
+	public static Play alphaBetaIDTT(State s, int maxDepth, int color) {
+		int inf = (int) 1e9;
+		double startTime = System.currentTimeMillis();
+		double timeLimit = 3000; // 3 seconds
+		double endTime = startTime + timeLimit;
+		double currentTime = startTime;
+		Play p = null;
+		TranspositionTable.TT = new HashMap<>();
+		TranspositionTable.hits = 0;
+		TranspositionTable.errors = 0;
+		int i;
+		for (i = 1; i <= maxDepth && currentTime < endTime; i++) {
+			originalDepth = i;
+			p = TranspositionTable.alphaBetaTT(s, i, -inf, inf, true, color);
+			currentTime = System.currentTimeMillis();
+		}
+		String time = String.format("%.2f", (currentTime - startTime) / 1000);
+		System.out.println("Reached Depth " + (i - 1) + " in " + time + " Seconds");
+		System.out.println("# of hits = " + TranspositionTable.hits + " ---- # of errors = " + TranspositionTable.errors
+				+ " ---- Table size = " + TranspositionTable.TT.size());
+		return p;
 	}
 
-	static void store(State s, int play, int score, Type flag, int depth) {
-
+	public static Play idmo(State s, int maxDepth, int color) { // Iterative Deepening with Move ordering
+		int inf = (int) 1e9;
+		double startTime = System.currentTimeMillis();
+		double timeLimit = 3000; // 3 seconds
+		double endTime = startTime + timeLimit;
+		double currentTime = startTime;
+		Play p = null;
+		int size = s.getSuccessors().size();
+		IDMO.oldMoves = new Play[size];
+		int i;
+		for (i = 1; i <= maxDepth && currentTime < endTime; i++) {
+			originalDepth = i;
+			p = IDMO.idmo(s, i, i, -inf, inf, true, color);
+			currentTime = System.currentTimeMillis();
+		}
+		String time = String.format("%.2f", (currentTime - startTime) / 1000);
+		System.out.println("Reached Depth " + (i - 1) + " in " + time + " Seconds");
+		return p;
 	}
 
-	public static int evaluate(State s, boolean winning, int colorFlag) { // Max is black and MIN is white
+	public static int evaluate(State s, boolean winning, int colorFlag, int depth) { // Max is black and MIN is white
 		int lastColor = s.grid[s.idx];
 		boolean iWin = lastColor == colorFlag;
 		// boolean iWin = Max;
+		int actualDepth = (originalDepth - depth);
 		if (winning) {
-			return iWin ? 500 : -500;
+			return (iWin ? 500 - actualDepth : -500 + actualDepth); // this is done to drive the agent to win quickly or
+																	// stall losing
 		} else {
 			int value = 0;
 			// am I going to make a full row?
-			value += s.countConsecutive(s.idx) * (iWin ? 10 : -10);
+			value += s.countConsecutive(s.idx) * (iWin ? 9 : -9);
 			// if I put my piece next to my other pieces, I can't lose from trap, I may lose
 			// from enemies consecutives or win with my consecutives
-			// I care abput putting my pieces together (defensive mechanism), I don't care a
+			// I care about putting my pieces together (defensive mechanism), I don't care a
 			// lot about enemies pieces
-			value += s.countComponent(s.idx) * (iWin ? 4 : -1);
-			// let's count how many enemy cells can't reach the edge
-			// value += s.enclosementValue(s.idx);
+			value += s.countComponent(s.idx) * (iWin ? 3 : -1);
+			// let's count how many pieces am I surrounding my enemy with
+			value += s.enclosementValue(s.idx) * (iWin ? 5 : -5);
+			// Knot Value, the problem is that is considers all the chain
+			value += s.chainValueBFS(s.idx) * (iWin ? 6 : -6); // minimize distance
 			return value;
 		}
 	}
