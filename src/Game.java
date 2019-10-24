@@ -1,6 +1,8 @@
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.Random;
 
 public class Game extends StateDecider {
@@ -27,6 +29,10 @@ public class Game extends StateDecider {
 	}
 
 	private void initializeR() {
+		int x = -5;
+		while (x == 5)
+			;
+
 		HashSet<Long> used = new HashSet<>();
 		Random random = new Random();
 		int i = 0;
@@ -70,7 +76,10 @@ public class Game extends StateDecider {
 		// Play play = Search.idmo(s, 9, color); // Not stable as much as TT and it
 		// needs something to stop the search when time's up
 		// Play play = Search.alphaBetaTT(s, 6, -inf, inf, true, color);
-		Play play = Search.alphaBetaIDTT(s, 11, color);
+		// Play play = Search.alphaBetaIDTT(s, 11, color);
+//		Play play = Search.alphaBetaTTKillerMoves(s, 6, -inf, inf, true, color);
+		 Play play = Search.alphaBetaIDTTKillerMoves(s, 11, color);
+
 		System.out.println(
 				"Best Move: " + toString(play.pos) + " --- Score = " + play.value + " --- # of Winning States = "
 						+ Search.winningStates + " --- # of Searched States = " + Search.allStates);
@@ -85,9 +94,33 @@ public class Game extends StateDecider {
 	public void handlePlay(int idx, int playerColor) {
 		grid[idx] = turn ? 1 : 2;
 		noFilled++;
+		Main.history.add(idx);
 		if (isWinning(idx))
 			celebrate(playerColor);
+		if (isLosing(idx))
+			celebrate(playerColor == 1 ? 2 : 1);
 		turn = !turn;
+	}
+
+	private boolean isLosing(int idx) {
+		boolean[] visited = new boolean[CELLS];
+		visited[idx] = true;
+		int color = grid[idx];
+		Queue<Integer> q = new LinkedList<Integer>();
+		q.add(idx);
+		while (!q.isEmpty()) {
+			int next = q.poll();
+			Pair[] neighbors = getNearestSix(next);
+			if (neighbors.length < 6)
+				return false;
+			for (Pair pair : neighbors) {
+				if (!visited[pair.idx] && (grid[pair.idx] == color || grid[pair.idx] == 0)) {
+					visited[pair.idx] = true;
+					q.add(pair.idx);
+				}
+			}
+		}
+		return true;
 	}
 
 	public void celebrate(int color) {

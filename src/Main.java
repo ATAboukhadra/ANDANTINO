@@ -8,6 +8,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.Stack;
 import java.util.concurrent.TimeUnit;
 
 import javax.swing.JButton;
@@ -29,12 +30,15 @@ public class Main extends JPanel {
 	public static boolean blackStarts;
 	public static boolean gameCreated;
 	public static boolean gameover;
+	public static Stack<Integer> history;
+	public static boolean searching;
 	
 	public Main() {
 		setPreferredSize(new Dimension(WIDTH, HEIGHT));
 		game = new Game();
 		gameCreated = false;
 		gameover = false;
+		history = new Stack<>();
 		addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
@@ -46,25 +50,40 @@ public class Main extends JPanel {
 						int y = e.getY();
 						int idx = game.findNearestCenter(x, y);
 						if (game.isValid(idx)) {
+							searching = true;
+							
 							draw(game.turn, idx);
 							game.handlePlay(idx, blackStarts ? 2 : 1);
-//							System.out.println("enclosment = " + game.enclosementValue(idx));
+//							System.out.println("chain = " + game.chainValueBFS(idx));
 							if (!gameover) {
 								Play p = game.search(idx, blackStarts ? 1 : 2);
 								draw(game.turn, p.pos);
 								game.handlePlay(p.pos, blackStarts ? 1 : 2);
 							}
+							
+							searching = false;
 						}
 					}
 				}
 			}
 
 		});
+
+		JButton undo = new JButton("Undo");
+		undo.setBounds(100, 100, 100, 50);
+		undo.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				undo();
+			}
+		});
+		
+		add(undo);
 	}
 
 	private void create() {
 		game.createNeighbors();
 		Game.startTime = System.currentTimeMillis();
+
 		// handle
 		if (!blackStarts) {
 			State s = new State(game.grid, Game.CELLS / 2, game.turn, game.noFilled, Game.initialHash);
@@ -76,6 +95,28 @@ public class Main extends JPanel {
 			draw(!game.turn, p.pos);
 		}
 		gameCreated = true;
+	}
+
+	public void undo() {
+		Graphics2D g = (Graphics2D) getGraphics();
+		if (history.size() > 2 && !searching) {
+			if(gameover)
+				gameover = false;
+			int top = history.pop();
+			game.grid[top] = 0;
+			int x = StateDecider.xs[top];
+			int y = StateDecider.ys[top];
+			drawHex(g, x, y, R);
+
+			top = history.pop();
+			game.grid[top] = 0;
+			x = StateDecider.xs[top];
+			y = StateDecider.ys[top];
+			drawHex(g, x, y, R);
+
+			game.noFilled -= 2;
+
+		}
 	}
 
 	public void draw(boolean turn, int idx) {
@@ -97,6 +138,7 @@ public class Main extends JPanel {
 
 		drawHexGrid(g2d, origin, 19, 4);
 		drawLetters(g2d, origin, 19, 4);
+
 	}
 
 	private void drawLetters(Graphics2D g2d, Point origin, int size, int pad) {

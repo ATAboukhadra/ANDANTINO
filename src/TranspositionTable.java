@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 
 public class TranspositionTable {
@@ -5,6 +7,10 @@ public class TranspositionTable {
 	public static HashMap<Integer, TTEntry> TT;
 	public static int errors;
 	public static int hits;
+	public static int[][] killerMoves;
+	public static int kmDepth;
+	public static int killers;
+	public static int target;
 	public static Play alphaBetaTT(State s, int depth, int alpha, int beta, boolean Max, int color) {
 		int olda = alpha;
 		TTEntry n = retrieve(s);
@@ -40,10 +46,9 @@ public class TranspositionTable {
 					bestPlay = new Play(score, succ.idx);
 				}
 				alpha = Math.max(alpha, score);
-				if (beta <= alpha) {
-					// System.out.println("pruned at depth " + depth);
+				if (beta <= alpha) 
 					break;
-				}
+				
 			}
 		} else {
 			score = Integer.MAX_VALUE;
@@ -54,10 +59,110 @@ public class TranspositionTable {
 					bestPlay = new Play(score, succ.idx);
 				}
 				beta = Math.min(beta, score);
-				if (beta <= alpha) {
-					// System.out.println("pruned at depth " + depth);
+				if (beta <= alpha) 
+					break;
+			}
+		}
+		Type flag;
+		if (score <= olda)
+			flag = Type.UPPER;
+		else if (score >= beta)
+			flag = Type.LOWER;
+		else
+			flag = Type.EXACT;
+
+		store(s, bestPlay.pos, score, flag, depth);
+
+		return bestPlay;
+	}
+
+	public static Play alphaBetaTTKillerMoves(State s, int depth, int alpha, int beta, boolean Max, int color) {
+		int olda = alpha;
+		TTEntry n = retrieve(s);
+		long hashKey = s.hashCode >> shift;
+		if (n != null && hashKey == n.key && n.depth >= depth) {
+			hits++;
+			if (n.typeOfValue == Type.EXACT) {
+				return new Play(n.value, n.bestMove);
+			} else if (n.typeOfValue == Type.LOWER) {
+				alpha = Math.max(alpha, n.value);
+			} else {
+				beta = Math.min(beta, n.value);
+			}
+			if (alpha >= beta)
+				return new Play(n.value, n.bestMove);
+		}
+
+		Search.allStates++;
+		if(Search.allStates == target && target != 0) {
+			System.out.println("reached # states = " + target);
+			target += (int)1e6;
+		}
+		boolean winning = s.isWinning();
+		if (winning || depth == 0) {
+			if (winning)
+				Search.winningStates++;
+			return new Play(Search.evaluate(s, winning, color, depth), s.idx);
+		}
+		
+		ArrayList<State> successors = s.getSuccessors();
+		int ply = kmDepth - depth;
+		int top = 0; 
+		boolean foundKillers = false;
+		for (int i = 0; i < killerMoves[ply].length; i++) {
+			int killerMove = killerMoves[ply][i];
+			for (int j = 0; j < successors.size(); j++) {
+				if(successors.get(j).idx == killerMove)
+				{
+					foundKillers = true;
+					Collections.swap(successors, j, top);
+					top++;
 					break;
 				}
+			}
+		}
+		
+		
+		int score;
+		Play bestPlay = null;
+		if (Max) {
+			score = Integer.MIN_VALUE;
+			int i = 0;
+			for (State succ : successors) {
+				Play play = alphaBetaTTKillerMoves(succ, depth - 1, alpha, beta, !Max, color);
+				if (play.value > score) {
+					score = play.value;
+					bestPlay = new Play(score, succ.idx);
+				}
+				alpha = Math.max(alpha, score);
+				if (beta <= alpha) {
+					if((i == 0 || i == 1) && foundKillers)
+						killers++;
+					killerMoves[ply][1] = killerMoves[ply][0];
+					killerMoves[ply][0] = succ.idx;
+					break;
+				}
+				i++;
+			}
+		} else {
+			score = Integer.MAX_VALUE;
+			int i = 0;
+			
+			for (State succ : successors) {
+				Play play = alphaBetaTTKillerMoves(succ, depth - 1, alpha, beta, !Max, color);
+				if (play.value < score) {
+					score = play.value;
+					bestPlay = new Play(score, succ.idx);
+				}
+				beta = Math.min(beta, score);
+				if (beta <= alpha) {
+					if((i == 0 || i == 1) && foundKillers)
+						killers++;
+					killerMoves[ply][1] = killerMoves[ply][0];
+					killerMoves[ply][0] = succ.idx;
+					break;
+				}
+				i++;
 			}
 		}
 		Type flag;
