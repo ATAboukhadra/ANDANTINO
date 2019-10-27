@@ -26,7 +26,8 @@ public class State extends StateDecider {
 		for (int i = 0; i < CELLS; i++) {
 			if (isValid(i)) {
 				int[] newGrid = play(grid, i, color);
-				State succ = new State(newGrid, i, color == 1, this.noFilled + 1, hashCode ^ Game.r[i][newGrid[i]]);
+				long newHashCode = this.hashCode ^ Game.r[i][0]^ Game.r[i][newGrid[i]] ;
+				State succ = new State(newGrid, i, color == 1, this.noFilled + 1, newHashCode);
 				successors.add(succ);
 			}
 		}
@@ -41,7 +42,8 @@ public class State extends StateDecider {
 		for (int i = 0; i < CELLS; i++) {
 			if (isValid(i)) {
 				int[] newGrid = play(grid, i, color);
-				State succ = new State(newGrid, i, color == 1, this.noFilled + 1, hashCode ^ Game.r[i][newGrid[i]]);
+				long newHashCode = this.hashCode ^ Game.r[i][0]^ Game.r[i][newGrid[i]] ;
+				State succ = new State(newGrid, i, color == 1, this.noFilled + 1, newHashCode);
 				successors.add(succ);
 			}
 		}

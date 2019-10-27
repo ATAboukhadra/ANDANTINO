@@ -10,7 +10,6 @@ public class TranspositionTable {
 	public static int[][] killerMoves;
 	public static int kmDepth;
 	public static int killers;
-	public static int target;
 	public static Play alphaBetaTT(State s, int depth, int alpha, int beta, boolean Max, int color) {
 		int olda = alpha;
 		TTEntry n = retrieve(s);
@@ -94,10 +93,6 @@ public class TranspositionTable {
 		}
 
 		Search.allStates++;
-		if(Search.allStates == target && target != 0) {
-			System.out.println("reached # states = " + target);
-			target += (int)1e6;
-		}
 		boolean winning = s.isWinning();
 		if (winning || depth == 0) {
 			if (winning)

@@ -24,7 +24,12 @@ public class Game extends StateDecider {
 		r = new long[CELLS][3];
 		stringRep = new String[CELLS];
 		initializeR();
-		initialHash = r[CELLS / 2][1];
+		for (int i = 0; i < r.length; i++) {
+			initialHash ^= r[i][0];
+		}
+		initialHash ^= r[CELLS / 2][1];
+		initialHash ^= r[CELLS / 2][0];
+		
 		// System.out.println(r[100][2]);
 	}
 
@@ -68,16 +73,17 @@ public class Game extends StateDecider {
 		State s = new State(grid, idx, color == 1, noFilled, initialHash);
 		// Search.originalDepth = 5;
 		// Play play = chooseRandom(s);
-		// Play play = Search.miniMax(s, 5, true, color);
-		// Play play = Search.alphaBeta(s, 5, -inf, inf, true, color);
-		// Play play = Search.alphaBetaNegaMax(s, 6, Integer.MIN_VALUE,
-		// Integer.MAX_VALUE, true, color);
-
-		// Play play = Search.idmo(s, 9, color); // Not stable as much as TT and it
+		int moves = s.getSuccessors().size();
+		System.out.println("# of valid moves = " + moves);
+		
+//		 Play play = Search.miniMax(s, 5, true, color);
+//		 Play play = Search.alphaBeta(s, 7, -inf, inf, true, color);
+//		 Play play = Search.negaMax(s, 7, Integer.MIN_VALUE, Integer.MAX_VALUE, true, color);
+//		 Play play = Search.idmo(s, 8, color); // Not stable as much as TT and it
 		// needs something to stop the search when time's up
-		// Play play = Search.alphaBetaTT(s, 6, -inf, inf, true, color);
-		// Play play = Search.alphaBetaIDTT(s, 11, color);
-//		Play play = Search.alphaBetaTTKillerMoves(s, 6, -inf, inf, true, color);
+//		 Play play = Search.alphaBetaTT(s, 11, -inf, inf, true, color);
+//		 Play play = Search.alphaBetaIDTT(s, 11, color);
+//		 Play play = Search.alphaBetaTTKillerMoves(s, 11, -inf, inf, true, color);
 		 Play play = Search.alphaBetaIDTTKillerMoves(s, 11, color);
 
 		System.out.println(

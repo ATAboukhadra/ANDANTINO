@@ -44,7 +44,7 @@ public class Search {
 		return bestPlay;
 	}
 
-	public static Play alphaBetaNegaMax(State s, int depth, int alpha, int beta, boolean Max, int color) {
+	public static Play negaMax(State s, int depth, int alpha, int beta, boolean Max, int color) {
 		allStates++;
 		boolean winning = s.isWinning();
 		if (winning || depth == 0) {
@@ -56,7 +56,7 @@ public class Search {
 		Play bestPlay = null;
 
 		for (State succ : s.getSuccessors()) {
-			Play play = alphaBetaNegaMax(succ, depth - 1, -1 * beta, -1 * alpha, !Max, color);
+			Play play = negaMax(succ, depth - 1, -1 * beta, -1 * alpha, !Max, color);
 			int value = play.value * -1;
 			if (value > score) {
 				score = value;
@@ -123,7 +123,7 @@ public class Search {
 	public static Play alphaBetaIDTT(State s, int maxDepth, int color) {
 		int inf = (int) 1e9;
 		double startTime = System.currentTimeMillis();
-		double timeLimit = 4000; // 3 seconds
+		double timeLimit = 3000; // 3 seconds
 		double endTime = startTime + timeLimit;
 		double currentTime = startTime;
 		Play p = null;
@@ -159,7 +159,7 @@ public class Search {
 	public static Play alphaBetaIDTTKillerMoves(State s, int maxDepth, int color) {
 		int inf = (int) 1e9;
 		double startTime = System.currentTimeMillis();
-		double timeLimit = 4000; // 4 seconds
+		double timeLimit = 3000; // 3 seconds
 		double endTime = startTime + timeLimit;
 		double currentTime = startTime;
 		Play p = null;
@@ -167,7 +167,7 @@ public class Search {
 		TranspositionTable.hits = 0;
 		TranspositionTable.errors = 0;
 		int moves = s.getSuccessors().size();
-		System.out.println("# of valid moves = " + moves);
+//		System.out.println("# of valid moves = " + moves);
 		// this is done to control the depth at very high branching factors to avoid
 		// crashing
 		if (moves > 22)
@@ -205,12 +205,20 @@ public class Search {
 		double currentTime = startTime;
 		Play p = null;
 		int size = s.getSuccessors().size();
+//		System.out.println("# of valid moves = " + size);
+		
 		IDMO.oldMoves = new Play[size];
 		int i;
 		for (i = 1; i <= maxDepth && currentTime < endTime; i++) {
 			originalDepth = i;
+			Search.allStates = 0;
 			p = IDMO.idmo(s, i, i, -inf, inf, true, color);
 			currentTime = System.currentTimeMillis();
+			String time = String.format("%.2f", (currentTime - startTime) / 1000);
+			if (i > 4)
+				System.out.println("Depth reached so far = " + (i) + " in " + time + " Seconds "
+						+ "# of effective killer moves = " + TranspositionTable.killers);
+
 		}
 		String time = String.format("%.2f", (currentTime - startTime) / 1000);
 		System.out.println("Reached Depth " + (i - 1) + " in " + time + " Seconds");
